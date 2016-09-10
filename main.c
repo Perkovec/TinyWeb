@@ -112,9 +112,9 @@ int main(int argc, char **argv) {
 	static struct sockaddr_in cli_addr; 
 	static struct sockaddr_in serv_addr;
 
-	if (argc < 3 || argc > 3 || !strcmp(argv[1], "-?")) {
-	  printf("usage: server [port] [server directory] &"
-	    "\tExample: server 80 ./ &\n\n"
+	if (argc < 3 || argc > 4 || !strcmp(argv[1], "-?")) {
+	  printf("usage: main [port] [server directory] [--background]"
+	    "\tExample: main 8080 ./\n\n"
 	    "\tOnly Supports:");
 
 		for (i = 0; mimeTypes[i].ext != 0; i++)
@@ -136,8 +136,10 @@ int main(int argc, char **argv) {
 		exit(4);
 	}
 
-	if (fork() != 0)
-		return 0;
+  if (argv[3] && (strcmp(argv[3], "-b") || strcmp(argv[3], "--background"))) {
+    if (fork() != 0)
+	    return 0;
+  }
 
 	signal(SIGCLD, SIG_IGN); 
 	signal(SIGHUP, SIG_IGN);
