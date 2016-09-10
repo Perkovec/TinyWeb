@@ -24,6 +24,8 @@
 #define LOG 44
 #define SERVER 45
 
+#define DEBUGLOG 0 // 1 - on, 0 - off
+
 void web(int fd, int hit, char *ip) {
 	int j, file_fd, buflen, len;
 	long i, ret;
@@ -31,7 +33,7 @@ void web(int fd, int hit, char *ip) {
 	static char buffer[BUFSIZE + 1];
 
 	ret = read(fd, buffer, BUFSIZE); 
-	if (ret == 0 || ret == -1) {
+	if (DEBUGLOG == 1 && (ret == 0 || ret == -1)) {
 		logger(SORRY, "failed to read browser request", "", fd);
 	}
 	if (ret > 0 && ret < BUFSIZE) {
@@ -40,9 +42,10 @@ void web(int fd, int hit, char *ip) {
     buffer[0] = 0;
   }
 
-	logger(LOG, "request", buffer, hit);
+  if (DEBUGLOG == 1)
+	  logger(LOG, "request", buffer, hit);
 
-	if (strncmp(buffer, "GET ", 4) && strncmp(buffer, "get ", 4) )
+	if (strncmp(buffer, "GET ", 4) && strncmp(buffer, "get ", 4) && DEBUGLOG == 1)
 		logger(SORRY, "Only simple GET operation supported", buffer, fd);
 
 	for (i = 4; i < BUFSIZE; i++) { 
@@ -53,7 +56,7 @@ void web(int fd, int hit, char *ip) {
 	}
 
 	for (j = 0; j < i - 1; j++) 	
-		if (buffer[j] == '.' && buffer[j + 1] == '.')
+		if (buffer[j] == '.' && buffer[j + 1] == '.' && DEBUGLOG == 1)
 			logger(SORRY, "Parent directory (..) path names not supported", buffer, fd);
 
 	if (!strncmp(&buffer[0], "GET /\0", 6) || !strncmp(&buffer[0], "get /\0", 6)) 
@@ -68,13 +71,14 @@ void web(int fd, int hit, char *ip) {
 			break;
 		}
 	}
-	if (fstr == 0) logger(SORRY, "file extension type not supported", buffer, fd);
+	if (fstr == 0 && DEBUGLOG == 1) logger(SORRY, "file extension type not supported", buffer, fd);
 
   file_fd = open(&buffer[5], O_RDONLY);
-	if (file_fd == -1) 
+	if (file_fd == -1 && DEBUGLOG == 1) 
 		logger(SORRY, "failed to open file", &buffer[5], fd);
 
-	logger(LOG, "SEND", &buffer[5], hit);
+  if (DEBUGLOG == 1)
+  	logger(LOG, "SEND", &buffer[5], hit);
   
   char header[100];
   for (i = 4; i < BUFSIZE; i++) { 
@@ -94,7 +98,9 @@ void web(int fd, int hit, char *ip) {
   struct tm *timeinfo = localtime (&nowtime);
   strftime(reqtime, sizeof reqtime, "%d/%b/%Y:%H:%M:%S %z", timeinfo); 
   sprintf(logoutput, " - - [%s] \"%s\" 200 %ld", reqtime, header, strlen(buffer));
-  logger(SERVER, ip, logoutput, 0);
+
+  if (DEBUGLOG == 1)
+    logger(SERVER, ip, logoutput, 0);
 
 	while ((ret = read(file_fd, buffer, BUFSIZE)) > 0 ) {
 	  write(fd, buffer, ret);
@@ -148,30 +154,32 @@ int main(int argc, char **argv) {
 		close(i);	
 	setpgrp();	
 
-	logger(LOG, "http server starting", argv[1], getpid());
+  if (DEBUGLOG == 1)
+  	logger(LOG, "http server starting", argv[1], getpid());
 
   listenfd = socket(AF_INET, SOCK_STREAM, 0);
-	if (listenfd < 0)
+	if (listenfd < 0 && DEBUGLOG == 1)
 		logger(ERROR, "system call","socket", 0);
 	port = atoi(argv[1]);
-	if (port < 0 || port > 60000)
+	if (DEBUGLOG == 1 && (port < 0 || port > 60000))
 		logger(ERROR,"Invalid port number try [1,60000]", argv[1], 0);
 	serv_addr.sin_family = AF_INET;
 	serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
 	serv_addr.sin_port = htons(port);
-	if (bind(listenfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
+	if (bind(listenfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0 && DEBUGLOG == 1)
 		logger(ERROR,"system call","bind",0);
-	if (listen(listenfd, 64) < 0)
+	if (listen(listenfd, 64) < 0 && DEBUGLOG == 1)
 		logger(ERROR,"system call","listen",0);
 
 	for (hit = 1; ;hit++) {
 		length = sizeof(cli_addr);
     socketfd = accept(listenfd, (struct sockaddr *)&cli_addr, &length);
-		if (socketfd < 0)
+		if (DEBUGLOG == 1 && socketfd < 0)
 			logger(ERROR,"system call","accept",0);
 
 		if ((pid = fork()) < 0) {
-			logger(ERROR,"system call","fork",0);
+      if (DEBUGLOG == 1)
+  			logger(ERROR,"system call","fork",0);
 		} else {
 			if (pid == 0) {
 				close(listenfd);
