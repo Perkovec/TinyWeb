@@ -1,4 +1,10 @@
-build: main.o mimeTypes.o logger.o
+ifeq ($(OS),Windows_NT)
+	CLEAN = del /S *.o & del main
+else
+	CLEAN = find . -name "*.o" -type f -delete && rm main
+endif
+
+all: main.o mimeTypes.o logger.o
 	gcc -o main main.o mimeTypes.o logger.o
 
 main.o: main.c
@@ -11,4 +17,4 @@ logger.o: logger.c
 	gcc -c -o logger.o logger.c
 
 clean:
-	find . -name "*.o" -type f -delete
+	$(CLEAN)
